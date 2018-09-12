@@ -2,13 +2,14 @@ import os
 import sys
 
 import arrow
-
-from abupy.AlphaBu import ABuPickTimeExecute
+import pandas as pd
 
 sys.path.insert(0, os.path.abspath('../'))
 
 import abupy
 
+from abupy.CrawlBu.ABuXqFile import map_stock_list_rom
+from abupy.AlphaBu import ABuPickTimeExecute
 from abupy.CoreBu import ABuEnv
 from abupy import ABuSymbolPd, AbuPickRegressAngMinMax, AbuSymbolCN, \
     EMarketDataFetchMode, ABuRegUtil, EMarketTargetType, AbuPickStockMaster, \
@@ -22,6 +23,9 @@ ABuEnv.g_data_fetch_mode = EMarketDataFetchMode.E_DATA_FETCH_FORCE_LOCAL
 # 目标市场为 A 股
 ABuEnv.g_market_target = EMarketTargetType.E_MARKET_TARGET_CN
 
+# 股票代码对应的公司信息
+STOCK_INFOS = pd.read_csv(map_stock_list_rom('CN'), dtype=str)
+
 
 def all_symbols():
     """
@@ -29,6 +33,12 @@ def all_symbols():
     """
     symbol = AbuSymbolCN()
     return symbol.all_symbol()
+
+
+def get_symbol_info(symbol):
+    return STOCK_INFOS[
+        (STOCK_INFOS.symbol == symbol[2:]) &
+        (STOCK_INFOS.market == symbol[:2].upper())]
 
 
 def update_kl_data():
