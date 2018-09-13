@@ -11,8 +11,8 @@ import abupy
 from abupy.CrawlBu.ABuXqFile import map_stock_list_rom
 from abupy.AlphaBu import ABuPickTimeExecute
 from abupy.CoreBu import ABuEnv
-from abupy import ABuSymbolPd, AbuPickRegressAngMinMax, AbuSymbolCN, \
-    EMarketDataFetchMode, ABuRegUtil, EMarketTargetType, AbuPickStockMaster, \
+from abupy import ABuSymbolPd, AbuSymbolCN, \
+    EMarketDataFetchMode, ABuRegUtil, EMarketTargetType, \
     AbuFactorBuyBreak, AbuFactorSellBreak, AbuFactorAtrNStop, AbuFactorPreAtrNStop, AbuFactorCloseAtrNStop
 from abupy import AbuBenchmark
 from abupy import AbuCapital
@@ -55,29 +55,31 @@ def update_kl_data():
 
 def pick_stocks(symbols):
     """
-    选股
+    选股，最近 2 年上升, 且最近半年也上升
     """
-    stock_pickers = [
-        {'class': AbuPickRegressAngMinMax,
-         'threshold_ang_min': 0.0,
-         'reversed': False,
-         'xd': 504}]
+    now = arrow.now('Asia/Shanghai')
+    start = now.replace(days=-180).strftime('%Y-%m-%d')
+    end = now.strftime('%Y-%m-%d')
+    picks = []
+    for i in symbols:
+        kl_pd = ABuSymbolPd.make_kl_df(i, n_folds=2)
+        if kl_pd is None:
+            continue
 
-    benchmark = AbuBenchmark(
-        start='2016-09-10',
-        end='2018-09-10')
-    capital = AbuCapital(1000000, benchmark)
-    return AbuPickStockMaster.do_pick_stock_with_process(
-        capital, benchmark, stock_pickers, symbols)
+        deg1 = ABuRegUtil.calc_regress_deg(kl_pd.close, show=False)
+        if deg1 <= 0:
+            continue
 
+        kl_pd = ABuSymbolPd.make_kl_df(i, start=start, end=end)
+        if kl_pd is None:
+            continue
 
-def show_stock_reg(symbol, n_folds=2):
-    """
-    查看股票线性回归线和斜率
-    """
-    kl_pd = ABuSymbolPd.make_kl_df(symbol, n_folds=n_folds)
-    deg = ABuRegUtil.calc_regress_deg(kl_pd.close)
-    print('选股周期内角度={}'.format(round(deg, 3)))
+        deg2 = ABuRegUtil.calc_regress_deg(kl_pd.close, show=False)
+        if deg1 * deg2 <= 0:
+            continue
+
+        picks.append(i)
+    return picks
 
 
 def buy_sell_signals(symbol):
@@ -108,4 +110,5 @@ def buy_sell_signals(symbol):
 
 
 # if __name__ == '__main__':
-#     pick_stocks(['sh600812'])
+#     symbols = all_symbols()
+#     cs = pick_stocks(symbols)
